@@ -2,6 +2,7 @@ package replacer
 
 import (
 	"bytes"
+	_ "embed"
 	"regexp"
 	"strings"
 
@@ -20,6 +21,9 @@ var (
 	m3u8ExtStr       = []byte(".m3u8")
 	methodOptionsStr = []byte("OPTIONS")
 	methodPostStr    = []byte("POST")
+
+	//go:embed vkui_bypass.js
+	vkuiBypass []byte
 )
 
 type domainConfig struct {
@@ -71,12 +75,13 @@ func (r *Replacer) getDomainConfig() *domainConfig {
 			SimpleReplace: r.ProxyBaseDomain + `\/_\/`,
 			SmartReplace:  r.ProxyBaseDomain + `\/@`,
 		})
+		cfg.apiOfficialLongpollReplace = newStringReplace(`"server":"api.vk.ru\/`, `"server":"`+r.ProxyBaseDomain+`\/@api.vk.ru\/`)
 		cfg.apiOfficialLongpollReplace = newStringReplace(`"server":"api.vk.com\/`, `"server":"`+r.ProxyBaseDomain+`\/@api.vk.com\/`)
 		cfg.apiVkmeLongpollReplace = newStringReplace(`"server":"api.vk.me\/`, `"server":"`+r.ProxyBaseDomain+`\/@api.vk.me\/`)
 		cfg.apiLongpollReplace = newStringReplace(`"server":"`, `"server":"`+r.ProxyBaseDomain+`\/@`)
 
-		cfg.hlsReplace = newRegexReplace(`https:\/\/([-_a-zA-Z0-9]+\.(?:userapi\.com|vk-cdn\.net|vk\.me|mycdn\.me|vkuser(?:live|video)\.(?:net|com)))\/`, `https://`+r.ProxyBaseDomain+`/_/$1/`)
-		cfg.m3u8Replace = newRegexReplace(`https:\/\/([-_a-zA-Z0-9]+\.(?:userapi\.com|vk-cdn\.net|vk\.me|mycdn\.me|vkuseraudio\.(?:net|com)))\/`, `https://`+r.ProxyBaseDomain+`/_/$1/`)
+		cfg.hlsReplace = newRegexReplace(`https:\/\/([-_a-zA-Z0-9]+\.(?:userapi\.com|vk-cdn\.net|vk\.me|mycdn\.me|vkuser(?:live|video)\.(?:net|com|ru)))\/`, `https://`+r.ProxyBaseDomain+`/_/$1/`)
+		cfg.m3u8Replace = newRegexReplace(`https:\/\/([-_a-zA-Z0-9]+\.(?:userapi\.com|vk-cdn\.net|vk\.me|mycdn\.me|vkuseraudio\.(?:net|com|ru)))\/`, `https://`+r.ProxyBaseDomain+`/_/$1/`)
 		cfg.m3u8PathReplace = &regexFuncReplace{
 			regex: regexp.MustCompile(`(?mi)^[a-z0-9_-].*`),
 		}
@@ -85,6 +90,7 @@ func (r *Replacer) getDomainConfig() *domainConfig {
 
 		cfg.vkuiLangsHtml = newStringReplace(`https://vk.com/js/vkui_lang.js`, `https://`+r.ProxyBaseDomain+`/_/vk.com/js/vkui_lang.js`)
 		cfg.vkuiApiJs = newStringReplace(`api.vk.com`, r.ProxyBaseDomain)
+
 		r.config = cfg
 	}
 	return r.config
@@ -108,7 +114,7 @@ func (r *Replacer) DoReplaceRequest(req *fasthttp.Request, ctx *ReplaceContext) 
 
 	// UPD 22.08.2021 - Пока не будет выяснен способ получения secret для генерации подписи, этот код не имеет смысла
 	// UPD 17.11.2021 (YTKAB0BP) - Похоже, sig больше не используется в новых версиях VK, поэтому можно использовать замену без него
-	if ctx.Host == "oauth.vk.com" {
+	if ctx.Host == "oauth.vk.com" || ctx.Host == "oauth.vk.ru" {
 		// Для авторизации страницы VKUI используют не уже готовый токен авторизации, а получают его при каждом
 		// открытии страницы. В запросе авторизации передается текущий урл страницы VKUI, а так как она проксируется,
 		// то она отличается от оригинальной. ВК проверяет этот урл страницы и отвергает авторизацию если он не
@@ -129,7 +135,7 @@ func (r *Replacer) DoReplaceRequest(req *fasthttp.Request, ctx *ReplaceContext) 
 				sourceUrl := args.Peek("source_url")
 				if sourceUrl != nil {
 					sourceUrls := string(sourceUrl)
-					modified := strings.Replace(sourceUrls, r.ProxyStaticDomain, "static.vk.com", 1)
+					modified := strings.Replace(sourceUrls, r.ProxyStaticDomain, "static.vk.ru", 1)
 					if modified != sourceUrls {
 						args.Set("source_url", modified)
 						dirty = true
@@ -138,7 +144,7 @@ func (r *Replacer) DoReplaceRequest(req *fasthttp.Request, ctx *ReplaceContext) 
 				redirectUri := args.Peek("redirect_uri")
 				if redirectUri != nil {
 					redirectUris := string(redirectUri)
-					modified := strings.Replace(redirectUris, ctx.OriginHost, "oauth.vk.com", 1)
+					modified := strings.Replace(redirectUris, ctx.OriginHost, "oauth.vk.ru", 1)
 					if modified != redirectUris {
 						args.Set("redirect_uri", modified)
 						dirty = true
@@ -165,7 +171,7 @@ func (r *Replacer) DoReplaceResponse(res *fasthttp.Response, body *bytebufferpoo
 		return body
 	}
 
-	if ctx.Host == "api.vk.com" {
+	if ctx.Host == "api.vk.com" || ctx.Host == "api.vk.ru" {
 		body = config.apiGlobalReplace.Apply(body)
 
 		// Replace longpoll server
@@ -201,7 +207,7 @@ func (r *Replacer) DoReplaceResponse(res *fasthttp.Response, body *bytebufferpoo
 			}
 		}
 
-	} else if ctx.Host == "vk.com" {
+	} else if ctx.Host == "vk.com" || ctx.Host == "vk.ru" {
 		if ctx.Path == "/video_hls.php" {
 			body = config.hlsReplace.Apply(body)
 		} else if ctx.Path == "/err404.php" {
@@ -213,7 +219,7 @@ func (r *Replacer) DoReplaceResponse(res *fasthttp.Response, body *bytebufferpoo
 			}
 		}
 
-	} else if ctx.Host == "static.vk.com" {
+	} else if ctx.Host == "static.vk.com" || ctx.Host == "static.vk.ru" {
 		if location := res.Header.Peek("Location"); location != nil {
 			// Абсолютный редирект на статик меняем на относительный
 			locstr := string(location)
@@ -236,9 +242,10 @@ func (r *Replacer) DoReplaceResponse(res *fasthttp.Response, body *bytebufferpoo
 			contentType := string(res.Header.ContentType())
 			if strings.HasPrefix(contentType, "text/html") {
 				body = config.vkuiLangsHtml.Apply(body)
+				body = newStringReplace(`<div id="root"></div>`, `<div id="root"></div><script>const PROXY_DOMAIN = "`+r.ProxyBaseDomain+`"; `+string(vkuiBypass)+`</script>`).Apply(body)
 			}
 		}
-	} else if strings.HasSuffix(ctx.Host, ".vkuseraudio.net") || strings.HasSuffix(ctx.Host, ".vkuseraudio.com") {
+	} else if strings.HasSuffix(ctx.Host, ".vkuseraudio.net") || strings.HasSuffix(ctx.Host, ".vkuseraudio.com") || strings.HasSuffix(ctx.Host, ".vkuseraudio.ru") {
 		if strings.HasSuffix(ctx.Path, ".m3u8") {
 			if location := res.Header.Peek("Location"); location != nil {
 				replaceLocationHeader(config, location, res)
@@ -270,7 +277,7 @@ func (r *Replacer) DoReplaceResponse(res *fasthttp.Response, body *bytebufferpoo
 				body = config.m3u8Replace.Apply(body)
 			}
 		}
-	} else if ctx.Host == "oauth.vk.com" {
+	} else if ctx.Host == "oauth.vk.com" || ctx.Host == "oauth.vk.ru" {
 		if ctx.Path == "/token" {
 			body = config.apiGlobalReplace.Apply(body)
 		}

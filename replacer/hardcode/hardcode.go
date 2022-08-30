@@ -15,6 +15,7 @@ var (
 	vkStr                 = []byte("vk")
 	mycdnStr              = []byte("mycdn")
 	comStr                = []byte("com")
+	ruStr                 = []byte("ru")
 	netStr                = []byte("net")
 	meStr                 = []byte("me")
 	videoStr              = []byte("video")
@@ -170,7 +171,7 @@ func (v *hardcodedDomainReplace) Apply(input *bytebufferpool.ByteBuffer) *bytebu
 		ins := v.simple
 		// Проверка что домен можно проксировать
 		if len(uri.host) == 2 {
-			if bytes.Equal(uri.host[0], vkStr) && bytes.Equal(uri.host[1], comStr) { // vk.com
+			if bytes.Equal(uri.host[0], vkStr) && (bytes.Equal(uri.host[1], comStr) || bytes.Equal(uri.host[1], ruStr)) { // vk.com
 				path := uri.getPath(input.B, offset+domainLength)
 				if bytes.HasPrefix(path, docPathStr) { // vk.com/doc[-0-9]*
 					c := path[len(docPathStr)]
@@ -212,7 +213,7 @@ func (v *hardcodedDomainReplace) Apply(input *bytebufferpool.ByteBuffer) *bytebu
 					continue
 				}
 			} else if bytes.Equal(uri.host[1], vkStr) { // *.vk.*
-				if bytes.Equal(uri.host[2], comStr) { // *.vk.com
+				if bytes.Equal(uri.host[2], comStr) || bytes.Equal(uri.host[2], ruStr) { // *.vk.com
 					// Домен m.vk.com не проксим, все остальные *.vk.com проксятся
 					if len(uri.host[0]) == 1 && uri.host[0][0] == 'm' {
 						continue
@@ -225,7 +226,7 @@ func (v *hardcodedDomainReplace) Apply(input *bytebufferpool.ByteBuffer) *bytebu
 					continue
 				}
 			} else if bytes.HasPrefix(uri.host[1], vkuserStr) { // *.vkuser(audio|video|live).(net|com)
-				if !bytes.Equal(uri.host[2], comStr) && !bytes.Equal(uri.host[2], netStr) {
+				if !bytes.Equal(uri.host[2], comStr) && !bytes.Equal(uri.host[2], netStr) && !bytes.Equal(uri.host[2], ruStr) {
 					continue
 				}
 				r := uri.host[1][len(vkuserStr):]

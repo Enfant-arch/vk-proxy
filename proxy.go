@@ -148,7 +148,7 @@ func (p *Proxy) handleProxy(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	if replaceContext.Host == "api.vk.com" &&
+	if (replaceContext.Host == "api.vk.com" || replaceContext.Host == "api.vk.ru") &&
 		(replaceContext.Path == "/away" || replaceContext.Path == "/away.php") {
 		p.handleAway(ctx)
 		return
@@ -219,8 +219,10 @@ func (p *Proxy) prepareProxyRequest(ctx *fasthttp.RequestCtx, replaceContext *re
 			return false
 		}
 		endpoint := uri[2 : slashIndex+2]
-		if endpoint != "vk.com" &&
+		if endpoint != "vk.com" && endpoint != "vk.ru" &&
 			!strings.HasSuffix(endpoint, ".vk.com") &&
+			!strings.HasSuffix(endpoint, ".vk.ru") &&
+			!strings.HasSuffix(endpoint, ".vkuserphoto.ru") &&
 			!strings.HasSuffix(endpoint, ".vkuseraudio.net") &&
 			!strings.HasSuffix(endpoint, ".vkuseraudio.com") &&
 			!strings.HasSuffix(endpoint, ".mycdn.me") &&
@@ -233,6 +235,8 @@ func (p *Proxy) prepareProxyRequest(ctx *fasthttp.RequestCtx, replaceContext *re
 	} else if altHost := req.Header.Peek("Proxy-Host"); altHost != nil {
 		host = string(altHost)
 		switch host {
+		case "static.vk.ru":
+		case "oauth.vk.ru":
 		case "static.vk.com":
 		case "oauth.vk.com":
 		default:
