@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/valyala/bytebufferpool"
-	"github.com/xtrafrancyz/vk-proxy/replacer/hardcode"
+	"github.com/vtosters/vk-proxy/replacer/hardcode"
 )
 
 const domain = "vk-api-proxy.xtrafrancyz.net"

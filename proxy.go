@@ -12,8 +12,8 @@ import (
 
 	"github.com/valyala/bytebufferpool"
 	"github.com/valyala/fasthttp"
-	"github.com/xtrafrancyz/vk-proxy/bytefmt"
-	"github.com/xtrafrancyz/vk-proxy/replacer"
+	"github.com/vtosters/vk-proxy/bytefmt"
+	"github.com/vtosters/vk-proxy/replacer"
 )
 
 const (

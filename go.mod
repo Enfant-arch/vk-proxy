@@ -1,4 +1,4 @@
-module github.com/xtrafrancyz/vk-proxy
+module github.com/vtosters/vk-proxy
 
 go 1.17
 

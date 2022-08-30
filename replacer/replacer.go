@@ -5,11 +5,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/valyala/bytebufferpool"
 	"github.com/valyala/fasthttp"
-	"github.com/xtrafrancyz/vk-proxy/replacer/hardcode"
-	"github.com/xtrafrancyz/vk-proxy/replacer/x"
+	"github.com/vtosters/vk-proxy/replacer/hardcode"
+	"github.com/vtosters/vk-proxy/replacer/x"
 )
 
 var (
